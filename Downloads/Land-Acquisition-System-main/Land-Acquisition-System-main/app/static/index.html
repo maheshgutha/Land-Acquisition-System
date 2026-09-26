@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LandScan - Land Acquisition &amp; Management</title>
+  <link rel="stylesheet" href="/vendor/leaflet.css">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <section id="login" class="hidden">
+    <form class="login-card" data-form="login" autocomplete="off">
+      <h1>LandScan</h1>
+      <p>Real-time land acquisition and management: one view of every project, parcel, payment and delay risk.</p>
+      <div class="row">
+        <div class="field"><label for="lu">Username</label><input id="lu" name="username" required autofocus></div>
+        <div class="field"><label for="lp">Password</label><input id="lp" name="password" type="password" required></div>
+      </div>
+      <div id="login-error" class="banner bad hidden"></div>
+      <button class="btn primary" type="submit">Sign in</button>
+      <div id="demo-users" class="hidden">
+        <div class="demo-note">Demo build. All projects, owners and coordinates are synthetic. Pick an account (password <b>demo1234</b>):</div>
+        <div id="demo-chips" class="chips"></div>
+      </div>
+    </form>
+  </section>
+
+  <div id="app" class="hidden">
+    <header class="top">
+      <div class="brand">LandScan<small>Land Acquisition &amp; Management</small></div>
+      <nav class="tabs" id="nav"></nav>
+      <div class="spacer"></div>
+      <div class="userbox"><span id="who"></span><button class="btn" data-act="logout">Sign out</button></div>
+    </header>
+    <main id="main"></main>
+  </div>
+
+  <div id="drawer-root"></div>
+  <div id="modal-root"></div>
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script src="/vendor/leaflet.js"></script>
+  <script src="/charts.js"></script>
+  <script src="/app.js"></script>
+  <script src="/drawer.js"></script>
+  <script src="/map.js"></script>
+  <script src="/boot.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+services:
+  landscan:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      LANDSCAN_SECRET: change-me-to-a-long-random-string
+      LANDSCAN_AUTOSEED: "1"   # synthetic demo data on first start; set to 0 for a real deployment
+      LANDSCAN_DEMO: "1"       # shows demo accounts on the login screen; set to 0 for a real deployment
+    volumes: ["landscan-data:/data"]
+volumes:
+  landscan-data:
