@@ -164,6 +164,7 @@ async function startApp() {
   S.meta = await api('/api/meta');
   const scope = S.user.district ? `${S.user.district}, ${S.user.state}` : S.user.state || S.user.agency || 'All India';
   $('#who').innerHTML = `<b>${esc(S.user.full_name)}</b> &middot; ${esc(S.user.role)} &middot; ${esc(scope)}`;
+  $('#who').title = `${S.user.full_name} · ${S.user.role} · ${scope}`;
   $('#nav').innerHTML = TABS.filter((t) => !t.roles || t.roles.includes(S.user.role))
     .map((t) => `<a href="#/${t.key}" data-tab="${t.key}">${t.label}</a>`).join('');
   route();

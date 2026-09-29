@@ -29,7 +29,7 @@
 | A08 | Category A — Project Foundation | Project has usable folder structure | Modular layout (`app/`, `routers/`, `ml/`, `static/`, `tests/`) | ✅ COMPLETED | Clean folder hierarchy | None | P1 |
 | A09 | Category A — Project Foundation | No blocking build errors | Vanilla JS & Python backend run with zero build step | ✅ COMPLETED | Server runs cleanly without errors | None | P0 |
 | A10 | Category A — Project Foundation | No major browser console errors | Clean JS execution in `app.js`, `drawer.js`, `map.js` | ✅ COMPLETED | UI executes without console crashes | None | P1 |
-| B01 | Category B — Branding & Product Clarity | LandScan AI name is displayed | Header & landing title display "LandScan AI" | 🟡 PARTIALLY COMPLETED | `index.html` & `main.py` display "LandScan" | Missing "AI" suffix | P1 |
+| B01 | Category B — Branding & Product Clarity | LandScan AI name is displayed | Header & landing title display "LandScan AI" | ✅ COMPLETED | `index.html` & `main.py` display "LandScan AI" | — | P1 |
 | B02 | Category B — Branding & Product Clarity | Product subtitle is displayed | Header displays "Intelligent Land Record Digitization & Validation System" | 🟡 PARTIALLY COMPLETED | `index.html` displays "Land Acquisition & Management System" | Subtitle text does not match prompt requirement | P1 |
 | B03 | Category B — Branding & Product Clarity | Logo or product icon is used | Visual logo/icon image integrated into header | 🔴 NOT COMPLETED | Text brand in `app.css` | Logo image asset / icon missing | P2 |
 | B04 | Category B — Branding & Product Clarity | Problem statement is explained | Problem statement explanation on login/landing page | 🟡 PARTIALLY COMPLETED | Login card text in `index.html` line 14 | Detailed problem statement panel missing | P2 |

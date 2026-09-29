@@ -337,3 +337,11 @@ ul.plain { list-style: none; margin: 0; padding: 0; } ul.plain li { padding: 7px
 .ocr-raw { max-height: 260px; overflow: auto; white-space: pre-wrap; background: var(--bg); padding: 10px; border-radius: 8px; }
 #ocr-recent tr.active td { background: #eef4fc; }
 @media (max-width: 760px) { .ocr-steps { grid-template-columns: 1fr; } }
+
+/* Header fit: brand subtitle under the name, and compact nav/user info on laptop widths */
+header.top .brand { flex: none; white-space: nowrap; line-height: 1.15; }
+header.top .brand small { display: block; margin-left: 0; font-size: 11px; }
+@media (min-width: 721px) and (max-width: 1440px) {
+  nav.tabs a { padding: 0 10px; }
+  #who { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

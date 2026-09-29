@@ -1,4 +1,4 @@
-# LandScan - Land Acquisition & Management System (SIH 2026, PS 26016 prototype)
+# LandScan AI - Land Acquisition & Management System (SIH 2026, PS 26016 prototype)
 
 FastAPI + SQLAlchemy backend, LightGBM/TreeSHAP delay-risk model, Tesseract-based document digitization,
 vanilla JS + Leaflet front end (no build step).

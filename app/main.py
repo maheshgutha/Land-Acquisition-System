@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="LandScan - Land Acquisition & Management System",
+    title="LandScan AI - Land Acquisition & Management System",
     version="0.1.0",
     description=(
         "Prototype for SIH 2026 PS 26016. All data in the demo database is synthetic; integrations are mocks "
