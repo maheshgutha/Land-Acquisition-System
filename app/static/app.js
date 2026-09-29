@@ -118,6 +118,11 @@ async function showLogin() {
   } catch (_) { /* demo list disabled */ }
 }
 ACT['fill-login'] = (el) => { $('#lu').value = el.dataset.u; $('#lp').value = 'demo1234'; };
+ACT['toggle-about'] = (el) => {
+  const panel = $('#about-panel');
+  const open = panel.classList.toggle('hidden') === false;
+  el.innerHTML = open ? 'About this project &uarr;' : 'About this project &darr;';
+};
 FORMS.login = async (f) => {
   const err = $('#login-error'); err.classList.add('hidden');
   try {
@@ -177,6 +182,8 @@ async function viewDashboard(main) {
       <div class="card"><h4>Land acquisition</h4>${areaRow('Proposed', a.proposed, 'var(--proposed)')}${areaRow('Notified', a.notified, 'var(--notified)')}${areaRow('Awarded', a.awarded, 'var(--awarded)')}${areaRow('Possessed', a.acquired, 'var(--possessed)')}</div>
       <div class="card"><h4>Notifications and awards</h4><div class="kpi">${s.notifications}<small>notifications</small></div>
         <div class="sub">${s.awards.count} awards declared, ${cr(s.awards.amount_cr)}</div></div>
+      <div class="card"><h4>Documents</h4><div class="kpi">${s.documents.total}<small>uploaded</small></div>
+        <div class="sub">${s.documents.versions} version${s.documents.versions === 1 ? '' : 's'} on file, each checksummed</div></div>
       <div class="card"><h4>Compensation</h4><div class="kpi">${pct(s.compensation.disbursed_pct)}<small>disbursed</small></div>
         ${bar(s.compensation.disbursed_pct, 'var(--compensated)')}<div class="sub">${cr(s.compensation.disbursed_cr)} of ${cr(s.compensation.assessed_cr)} assessed</div></div>
       <div class="card"><h4>Families and R&amp;R</h4><div class="kpi">${num(s.families.displaced, 0)}<small>displaced of ${num(s.families.affected, 0)} affected</small></div>
@@ -349,18 +356,30 @@ async function viewReports(main) {
   main.innerHTML = `<div class="gap mb"><h2>MIS reports</h2></div>
     <div class="filters"><div><label>Group by</label><select id="r-group"><option value="">None (one row per project)</option>
       ${['state', 'district', 'project_type', 'agency', 'stage'].map((g) => `<option value="${g}">${title(g)}</option>`).join('')}</select></div>
+      <div class="grow"><label>Search</label><input id="r-search" placeholder="Filter rows, any column"></div>
       <div><button class="btn" data-act="run-report">Preview</button></div>
       <div><button class="btn primary" data-act="csv-report">Download CSV</button></div>
       <div><button class="btn" data-act="print-page">Print</button></div></div>
     <div class="card"><div class="table-wrap" id="report-out"><span class="muted">Choose grouping and preview.</span></div></div>`;
+  $('#r-search').addEventListener('input', () => renderReportTable());
   ACT['run-report']();
 }
+let _reportData = null;
 ACT['run-report'] = async () => {
   const g = $('#r-group').value;
   const d = await attempt(() => api('/api/reports/mis' + (g ? '?group_by=' + g : '')));
   if (!d) return;
-  $('#report-out').innerHTML = `<table><thead><tr>${d.columns.map((c) => `<th>${esc(title(c))}</th>`).join('')}</tr></thead><tbody>${d.rows.slice(0, 200).map((r) => `<tr>${d.columns.map((c) => `<td>${esc(r[c])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  _reportData = d;
+  renderReportTable();
 };
+function renderReportTable() {
+  if (!_reportData) return;
+  const d = _reportData;
+  const q = ($('#r-search') ? $('#r-search').value : '').trim().toLowerCase();
+  const rows = q ? d.rows.filter((r) => d.columns.some((c) => String(r[c] ?? '').toLowerCase().includes(q))) : d.rows;
+  $('#report-out').innerHTML = `${q ? `<div class="small muted mb">${rows.length} of ${d.rows.length} rows match "${esc(q)}"</div>` : ''}
+    <table><thead><tr>${d.columns.map((c) => `<th>${esc(title(c))}</th>`).join('')}</tr></thead><tbody>${rows.slice(0, 200).map((r) => `<tr>${d.columns.map((c) => `<td>${esc(r[c])}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${d.columns.length}" class="muted">No rows match.</td></tr>`}</tbody></table>`;
+}
 ACT['csv-report'] = () => { const g = $('#r-group').value; attempt(() => downloadBlob('/api/reports/mis?format=csv' + (g ? '&group_by=' + g : ''), 'mis_report.csv')); };
 
 // ---------------------------------------------------------------- audit

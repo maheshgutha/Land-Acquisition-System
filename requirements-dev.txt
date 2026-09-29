@@ -1,0 +1,3 @@
+# Optional, on top of requirements.txt - only needed to run tests/test_e2e_smoke.py,
+# a real-browser UI smoke test. The core suite (pytest -q) never needs this.
+playwright>=1.40

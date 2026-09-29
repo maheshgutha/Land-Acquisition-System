@@ -378,29 +378,162 @@ function documentsTab(d) {
     <div class="card mt"><h4>Repository (${docs.length})</h4>
       ${docs.map((x) => `<div class="mb"><b>${esc(x.name)}</b> <span class="badge">${esc(title(x.category))}</span> <span class="muted small">v${x.latest_version}</span>
         <ul class="plain small">${[...x.versions].reverse().map((v) => `<li>v${v.version} &middot; ${fdate(v.uploaded_at)} by ${esc(v.uploaded_by)} &middot; ${fsize(v.size)} <span class="muted" title="SHA-256 ${esc(v.sha256)}">sha ${esc(v.sha256.slice(0, 10))}</span>
-          <button class="btn sm" data-act="dl-version" data-id="${v.id}" data-name="${esc(v.filename)}">Download</button>${v.note ? ` <span class="muted">${esc(v.note)}</span>` : ''}</li>`).join('')}</ul></div>`).join('') || '<span class="muted small">No documents uploaded.</span>'}
-      ${canUpload && d.status !== 'completed' ? `<form data-form="upload-doc" class="mt"><h4>Upload document or new version</h4><div class="row">
+          <button class="btn sm" data-act="dl-version" data-id="${v.id}" data-name="${esc(v.filename)}">Download</button>
+          <button class="btn sm" data-act="view-extraction" data-id="${v.id}">&#128269; Digitized text</button>
+          ${v.note ? ` <span class="muted">${esc(v.note)}</span>` : ''}
+          <div id="ext-${v.id}" class="hidden mt"></div></li>`).join('')}</ul></div>`).join('') || '<span class="muted small">No documents uploaded.</span>'}
+      ${canUpload && d.status !== 'completed' ? `<form data-form="upload-doc" class="mt" id="upload-doc-form"><h4>Upload document or new version</h4>
+        <div class="dropzone" id="doc-dropzone"><div class="row">
         <div><label>File</label><div class="gap"><input type="file" name="file" id="doc-file" required style="flex:1"><button class="btn sm" type="button" data-act="capture-photo" title="Take a photo with this device's camera">&#128247;</button></div>
-          <input type="file" id="doc-camera" accept="image/*" capture="environment" class="hidden"></div>
+          <input type="file" id="doc-camera" accept="image/*" capture="environment" class="hidden">
+          <div class="small muted mt">or drag a file here &middot; allowed: ${S.meta.upload.allowed_extensions.join(', ')} &middot; up to ${S.meta.upload.max_mb} MB</div></div>
         <div><label>Category</label><select name="category">${cats.map((c) => `<option value="${c}">${esc(title(c))}</option>`).join('')}</select></div>
         <div><label>Name (same name = new version)</label><input name="name" placeholder="e.g. Land plan"></div>
-        <div><label>Note</label><input name="note"></div><div style="align-self:end"><button class="btn primary" type="submit">Upload</button></div></div></form>` : ''}</div>`;
+        <div><label>Note</label><input name="note"></div><div style="align-self:end"><button class="btn primary" type="submit">Upload</button></div></div>
+        <div id="doc-preview" class="doc-preview hidden"></div>
+        <div id="doc-progress" class="doc-progress hidden"><div class="track"><i></i></div><span class="small muted"></span></div>
+        </div></form>` : ''}</div>`;
 }
 ACT['capture-photo'] = () => $('#doc-camera').click();
+
+function docFileChosen(file) {
+  const prev = $('#doc-preview');
+  if (!file) { prev.classList.add('hidden'); prev.innerHTML = ''; return; }
+  const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+  const ok = S.meta.upload.allowed_extensions.includes(ext);
+  prev.classList.remove('hidden');
+  const sizeOk = file.size <= S.meta.upload.max_mb * 1024 * 1024;
+  const warn = !ok ? `<span class="fail">File type ${esc(ext)} is not allowed here (allowed: ${S.meta.upload.allowed_extensions.join(', ')}).</span>`
+    : !sizeOk ? `<span class="fail">File is larger than ${S.meta.upload.max_mb} MB.</span>` : '';
+  if (file.type.startsWith('image/')) {
+    const url = URL.createObjectURL(file);
+    prev.innerHTML = `<img src="${url}" alt="preview"><div><b>${esc(file.name)}</b><div class="small muted">${fsize(file.size)}</div>${warn}</div>`;
+  } else {
+    prev.innerHTML = `<div class="doc-preview-icon">&#128196;</div><div><b>${esc(file.name)}</b><div class="small muted">${fsize(file.size)}</div>${warn}</div>`;
+  }
+}
 document.addEventListener('change', (e) => {
   if (e.target.id === 'doc-camera' && e.target.files.length) {
     const dt = new DataTransfer();
     dt.items.add(e.target.files[0]);
     $('#doc-file').files = dt.files;
     toast('Photo captured: ' + e.target.files[0].name, 'ok');
+    docFileChosen(e.target.files[0]);
   }
+  if (e.target.id === 'doc-file') docFileChosen(e.target.files[0]);
 });
+// Drag-and-drop onto the upload card drops straight into the file input (works for one file, same as the picker).
+document.addEventListener('dragover', (e) => { if (e.target.closest && e.target.closest('#doc-dropzone')) { e.preventDefault(); $('#doc-dropzone').classList.add('drag'); } });
+document.addEventListener('dragleave', (e) => { if (e.target.closest && e.target.closest('#doc-dropzone') && !e.relatedTarget) $('#doc-dropzone').classList.remove('drag'); });
+document.addEventListener('drop', (e) => {
+  const zone = e.target.closest && e.target.closest('#doc-dropzone');
+  if (!zone) return;
+  e.preventDefault();
+  zone.classList.remove('drag');
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!file) return;
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  $('#doc-file').files = dt.files;
+  docFileChosen(file);
+});
+
+// Plain fetch() has no upload-progress event, so this one form uses XMLHttpRequest directly instead of api().
+function uploadWithProgress(path, formData, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', path);
+    if (S.token) xhr.setRequestHeader('Authorization', 'Bearer ' + S.token);
+    xhr.upload.addEventListener('progress', (e) => { if (e.lengthComputable) onProgress(Math.round((100 * e.loaded) / e.total)); });
+    xhr.onload = () => {
+      let body; try { body = JSON.parse(xhr.responseText); } catch (_) { body = null; }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+      else reject(new ApiError(xhr.status, (body && body.detail) || xhr.statusText));
+    };
+    xhr.onerror = () => reject(new ApiError(0, 'Network error during upload'));
+    xhr.send(formData);
+  });
+}
 FORMS['upload-doc'] = async (f) => {
   const fd = new FormData(f);  // the camera input has no `name`, so a captured photo (copied into #doc-file) is the only file present
   if (!fd.get('name')) fd.delete('name');
-  await mutate(() => api(`/api/projects/${D.id}/documents`, { method: 'POST', form: fd }), 'Document stored');
+  const bar = $('#doc-progress');
+  bar.classList.remove('hidden');
+  const fill = bar.querySelector('i'), label = bar.querySelector('span');
+  fill.style.width = '0%'; label.textContent = 'Uploading...';
+  try {
+    await uploadWithProgress(`/api/projects/${D.id}/documents`, fd, (pct) => { fill.style.width = pct + '%'; label.textContent = pct + '%'; });
+    label.textContent = 'Done';
+    D.land = null; D.docs = null; D.why = null;
+    await reloadDetail(async () => { await loadTabData(); });
+    toast('Document stored', 'ok');
+  } catch (e) { bar.classList.add('hidden'); fail(e); }
 };
 ACT['dl-version'] = (el) => attempt(() => downloadBlob(`/api/documents/versions/${el.dataset.id}/download`, el.dataset.name));
+
+// ---- OCR / document digitization
+const EXTRACTION_FIELD_LABELS = {
+  survey_no: 'Survey No.', owner_name: 'Owner name', village: 'Village', area_ha: 'Area (ha)',
+  land_type: 'Land type', compensation_amount: 'Compensation (Rs.)', ref_no: 'Reference No.', date: 'Date',
+};
+const EXTRACTION_STATUS_LABEL = { done: 'Digitized', pending: 'Processing', skipped: 'Not applicable', failed: 'Could not read' };
+
+function extractionPanelHtml(ext, versionId) {
+  const statusBadgeClass = { done: 'low', pending: 'medium', skipped: '', failed: 'critical' }[ext.status] || '';
+  const head = `<div class="gap"><span class="badge ${statusBadgeClass}">${esc(EXTRACTION_STATUS_LABEL[ext.status] || ext.status)}</span>
+    ${ext.status === 'done' ? `<span class="muted small">${esc(ext.engine)} &middot; ${ext.ocr_confidence != null ? Math.round(ext.ocr_confidence) + '% OCR confidence' : ''}</span>` : ''}
+    ${ext.applied ? `<span class="badge low">Applied to parcel by ${esc(ext.applied_by)}</span>` : ''}</div>`;
+
+  if (ext.status !== 'done') {
+    return `<div class="card">${head}${ext.note ? `<div class="small muted mt">${esc(ext.note)}</div>` : ''}</div>`;
+  }
+
+  const fieldKeys = Object.keys(ext.fields);
+  const fieldsTable = fieldKeys.length
+    ? `<table class="small mt"><tbody>${fieldKeys.map((k) => `<tr><td class="muted">${esc(EXTRACTION_FIELD_LABELS[k] || title(k))}</td>
+        <td><b>${esc(ext.fields[k].value)}</b></td>
+        <td><span class="badge ${ext.fields[k].confidence === 'high' ? 'low' : 'medium'}">${ext.fields[k].confidence === 'high' ? 'high confidence' : 'needs review'}</span></td></tr>`).join('')}</tbody></table>`
+    : '<div class="small muted mt">No recognizable fields found in this document.</div>';
+
+  const canApply = can('district', 'state', 'central') && !ext.applied && fieldKeys.length;
+  const applyForm = canApply ? `<form data-form="apply-extraction" data-version="${versionId}" class="mt">
+      <div class="small muted">Review before applying — correct anything OCR got wrong, then confirm onto the matching parcel by survey number.</div>
+      <div class="field"><label>Survey No. (must match an existing parcel)</label><input name="survey_no" value="${esc(ext.fields.survey_no ? ext.fields.survey_no.value : '')}" required></div>
+      <div class="field"><label>Owner name</label><input name="owner_name" value="${esc(ext.fields.owner_name ? ext.fields.owner_name.value : '')}"></div>
+      <div class="field"><label>Village</label><input name="village" value="${esc(ext.fields.village ? ext.fields.village.value : '')}"></div>
+      <div class="field"><label>Area (ha)</label><input name="area_ha" value="${esc(ext.fields.area_ha ? ext.fields.area_ha.value : '')}"></div>
+      <div class="field"><label>Land type</label><input name="land_type" value="${esc(ext.fields.land_type ? ext.fields.land_type.value : '')}"></div>
+      <button class="btn primary sm" type="submit">Apply to parcel</button>
+    </form>` : '';
+
+  return `<div class="card">${head}${fieldsTable}${applyForm}
+    <details class="mt"><summary class="small muted">Raw OCR text</summary><pre class="small">${esc(ext.text)}</pre></details></div>`;
+}
+
+ACT['view-extraction'] = async (el) => {
+  const vid = el.dataset.id;
+  const box = document.querySelector(`#ext-${vid}`);
+  if (!box) return;
+  if (!box.classList.contains('hidden')) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="small muted">Loading digitized text...</div>';
+  try {
+    const ext = await api(`/api/documents/versions/${vid}/extraction`);
+    box.innerHTML = extractionPanelHtml(ext, vid);
+  } catch (e) {
+    box.innerHTML = `<div class="banner bad small">${esc(e.message)}</div>`;
+  }
+};
+
+FORMS['apply-extraction'] = async (f) => {
+  const vid = f.dataset.version;
+  const body = formData(f);
+  Object.keys(body).forEach((k) => { if (!body[k]) delete body[k]; });
+  const out = await attempt(() => api(`/api/documents/versions/${vid}/apply-extraction`, { method: 'POST', json: { fields: body } }), 'Applied to parcel');
+  if (out === undefined) return;
+  D.land = null; D.docs = null;
+  await reloadDetail(async () => { await loadTabData(); });
+};
 
 // ---- timeline
 function timelineTab(d) {

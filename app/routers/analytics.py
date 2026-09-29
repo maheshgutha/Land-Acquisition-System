@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .. import audit, geo
 from ..db import get_db
-from ..models import Alert, Award, Milestone, Notification, Parcel, Project, RiskScore, User
+from ..models import Alert, Award, Document, DocumentVersion, Milestone, Notification, Parcel, Project, RiskScore, User
 from ..security import can_see_owner_names, get_current_user, project_scope, require_roles, scoped_projects
 from ..services.metrics import build_metrics
 from ..services.serialize import project_row
@@ -59,7 +59,7 @@ def summary(
         parcels_possessed = db.scalar(
             select(func.count()).select_from(Parcel).where(Parcel.project_id.in_(ids), Parcel.status == "possessed")
         )
-    n_notifications = n_awards = 0
+    n_notifications = n_awards = n_documents = n_document_versions = 0
     award_amount = 0.0
     on_time = done = 0
     if ids:
@@ -67,6 +67,11 @@ def summary(
         n_awards, award_amount = db.execute(
             select(func.count(), func.coalesce(func.sum(Award.total_amount_cr), 0.0)).where(Award.project_id.in_(ids))
         ).one()
+        n_documents = db.scalar(select(func.count()).select_from(Document).where(Document.project_id.in_(ids)))
+        n_document_versions = db.scalar(
+            select(func.count()).select_from(DocumentVersion).join(Document, Document.id == DocumentVersion.document_id)
+            .where(Document.project_id.in_(ids))
+        )
         for planned, start, end in db.execute(
             select(Milestone.planned_days, Milestone.actual_start, Milestone.actual_end)
             .where(Milestone.project_id.in_(ids), Milestone.actual_end.is_not(None), Milestone.actual_start.is_not(None), Milestone.planned_days > 0)
@@ -101,6 +106,7 @@ def summary(
         },
         "notifications": n_notifications,
         "awards": {"count": n_awards, "amount_cr": round(award_amount, 2)},
+        "documents": {"total": n_documents, "versions": n_document_versions},
         "compensation": {
             "assessed_cr": round(assessed, 2),
             "disbursed_cr": round(disbursed, 2),

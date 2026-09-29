@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import audit, workflow
+from ..config import ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_MB
 from ..db import get_db
 from ..ml.features import STATES
 from ..models import Award, Document, Event, Notification, Parcel, Project, RiskScore, User, utcnow
@@ -122,6 +123,7 @@ def meta(user: User = Depends(get_current_user)):
         "advance_roles": {k: sorted(v) for k, v in ADVANCE_ROLES.items()},
         "templates": list(workflow.TEMPLATES),
         "required_documents": REQUIRED_DOC_CATEGORIES,
+        "upload": {"allowed_extensions": sorted(ALLOWED_UPLOAD_EXTENSIONS), "max_mb": MAX_UPLOAD_MB},
     }
 
 

@@ -71,10 +71,21 @@ def test_document_validation_and_scope(client, auth):
                        data={"category": "other"}).status_code == 404
 
 
+def test_document_upload_rejects_disallowed_file_type(client, auth):
+    pid = client.get("/api/projects", headers=auth("agency_nhai")).json()["items"][0]["id"]
+    h = auth("agency_nhai")
+    r = client.post(f"/api/projects/{pid}/documents", headers=h, files={"file": ("script.exe", b"x")},
+                    data={"category": "other"})
+    assert r.status_code == 422 and "not allowed" in r.json()["detail"]
+    ok = client.post(f"/api/projects/{pid}/documents", headers=h, files={"file": ("plan.pdf", b"%PDF-1.4 x")},
+                     data={"category": "other"})
+    assert ok.status_code == 201
+
+
 def test_uploaded_filename_cannot_escape_storage(client, auth):
     pid = client.get("/api/projects", headers=auth("agency_nhai")).json()["items"][0]["id"]
     r = client.post(f"/api/projects/{pid}/documents", headers=auth("agency_nhai"),
-                    files={"file": ("../../etc/passwd", b"x")}, data={"category": "other", "name": "traversal"})
+                    files={"file": ("../../etc/passwd.txt", b"x")}, data={"category": "other", "name": "traversal"})
     assert r.status_code == 201
     v = r.json()["versions"][-1]
     assert "/" not in v["filename"] and ".." not in v["filename"].replace("_", "")

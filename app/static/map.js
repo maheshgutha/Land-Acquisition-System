@@ -3,7 +3,9 @@
 
 async function viewMap(main) {
   const states = S.meta.states;
-  main.innerHTML = `<div class="gap mb"><h2>Land map</h2><span class="muted small" id="map-count"></span><div class="spacer"></div>
+  main.innerHTML = `<div class="gap mb"><h2>Land map</h2><span class="muted small" id="map-count"></span>
+      <span class="synthetic-badge" title="Parcel boundaries and coordinates in this build are synthetic demo data.">Synthetic coordinates</span>
+      <div class="spacer"></div>
       <div><select id="m-state"><option value="">All visible states</option>${states.map((s) => `<option>${esc(s)}</option>`).join('')}</select></div></div>
     <div class="legend mb" id="legend">
       ${Object.entries(STATUS_COLORS).map(([k, c]) => `<label><input type="checkbox" data-layer="${k}" checked><span class="dot" style="background:${c}"></span>${title(k)}</label>`).join('')}

@@ -195,6 +195,27 @@ class DocumentVersion(Base):
     document: Mapped[Document] = relationship(back_populates="versions")
 
 
+class DocumentExtraction(Base):
+    """OCR + field-extraction result for one document version. One row per version;
+    never auto-applied to a parcel - see routers/documents.py apply_extraction."""
+
+    __tablename__ = "document_extractions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_version_id: Mapped[int] = mapped_column(
+        ForeignKey("document_versions.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|done|skipped|failed
+    engine: Mapped[str] = mapped_column(String(60), default="")
+    ocr_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    text: Mapped[str] = mapped_column(Text, default="")
+    fields: Mapped[dict] = mapped_column(JSON, default=dict)
+    note: Mapped[str] = mapped_column(Text, default="")  # skip/failure reason, when applicable
+    applied: Mapped[bool] = mapped_column(Boolean, default=False)
+    applied_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    applied_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class AuditLog(Base):
     """Append-only, hash-chained. Each row commits to the one before it."""
 
