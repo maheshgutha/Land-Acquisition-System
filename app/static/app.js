@@ -153,6 +153,7 @@ ACT.logout = () => logout();
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' }, { key: 'map', label: 'Map' }, { key: 'projects', label: 'Projects' },
+  { key: 'digitize', label: 'Digitize' },
   { key: 'risk', label: 'Delay risk' }, { key: 'alerts', label: 'Alerts' }, { key: 'reports', label: 'Reports' },
   { key: 'audit', label: 'Audit', roles: ['auditor', 'central'] },
 ];
@@ -175,7 +176,11 @@ function route() {
   S.view = tab.key;
   document.querySelectorAll('#nav a').forEach((a) => a.classList.toggle('active', a.dataset.tab === tab.key));
   if (S.map) { S.map.remove(); S.map = null; }
-  const main = $('#main');
+  // Fresh container per navigation: a slow view from the previous tab then renders into the
+  // detached old element instead of overwriting the page the user has moved to.
+  const old = $('#main');
+  const main = old.cloneNode(false);
+  old.replaceWith(main);
   main.innerHTML = '<div class="grid g4">' + '<div class="card skeleton skel-card"></div>'.repeat(8) + '</div>';
   const view = VIEWS[tab.key];
   view(main).catch((e) => { main.innerHTML = `<div class="banner bad">${esc(e.message)}</div>`; });
@@ -200,7 +205,8 @@ async function viewDashboard(main) {
       <div class="card"><h4>Notifications and awards</h4><div class="kpi">${s.notifications}<small>notifications</small></div>
         <div class="sub">${s.awards.count} awards declared, ${cr(s.awards.amount_cr)}</div></div>
       <div class="card"><h4>Documents</h4><div class="kpi">${s.documents.total}<small>uploaded</small></div>
-        <div class="sub">${s.documents.versions} version${s.documents.versions === 1 ? '' : 's'} on file, each checksummed</div></div>
+        <div class="sub">${s.documents.versions} version${s.documents.versions === 1 ? '' : 's'} on file, each checksummed</div>
+        <a class="small" href="#/digitize">&#128269; Digitize a scanned document &rarr;</a></div>
       <div class="card"><h4>Compensation</h4><div class="kpi">${pct(s.compensation.disbursed_pct)}<small>disbursed</small></div>
         ${bar(s.compensation.disbursed_pct, 'var(--compensated)')}<div class="sub">${cr(s.compensation.disbursed_cr)} of ${cr(s.compensation.assessed_cr)} assessed</div></div>
       <div class="card"><h4>Families and R&amp;R</h4><div class="kpi">${num(s.families.displaced, 0)}<small>displaced of ${num(s.families.affected, 0)} affected</small></div>

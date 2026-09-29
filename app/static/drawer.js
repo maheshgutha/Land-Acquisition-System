@@ -376,10 +376,12 @@ function documentsTab(d) {
   const canUpload = can('agency', 'state', 'district', 'field');
   return `<div class="card"><h4>Required for scrutiny</h4><div class="gap">${d.documents_required.map((c) => `<span class="badge ${d.documents_uploaded.includes(c) ? 'low' : 'medium'}">${d.documents_uploaded.includes(c) ? '&#10003;' : '&#9675;'} ${esc(title(c))}</span>`).join('')}</div></div>
     <div class="card mt"><h4>Repository (${docs.length})</h4>
+      <div class="banner info small">&#128269; Every PDF or image uploaded here is read automatically (OCR). Open <b>OCR result</b> under a version to review the fields, or use the <a href="#/digitize">Digitize documents</a> page.</div>
       ${docs.map((x) => `<div class="mb"><b>${esc(x.name)}</b> <span class="badge">${esc(title(x.category))}</span> <span class="muted small">v${x.latest_version}</span>
         <ul class="plain small">${[...x.versions].reverse().map((v) => `<li>v${v.version} &middot; ${fdate(v.uploaded_at)} by ${esc(v.uploaded_by)} &middot; ${fsize(v.size)} <span class="muted" title="SHA-256 ${esc(v.sha256)}">sha ${esc(v.sha256.slice(0, 10))}</span>
           <button class="btn sm" data-act="dl-version" data-id="${v.id}" data-name="${esc(v.filename)}">Download</button>
-          <button class="btn sm" data-act="view-extraction" data-id="${v.id}">&#128269; Digitized text</button>
+          ${v.ocr ? `<button class="btn sm" data-act="view-extraction" data-id="${v.id}">&#128269; OCR result</button>
+            ${v.ocr.status === 'done' ? `<span class="badge ${v.ocr.applied ? 'low' : v.ocr.fields_found ? 'medium' : ''}">${v.ocr.applied ? 'Applied' : v.ocr.fields_found + ' fields read'}</span>` : `<span class="badge">${esc(EXTRACTION_STATUS_LABEL[v.ocr.status] || v.ocr.status)}</span>`}` : ''}
           ${v.note ? ` <span class="muted">${esc(v.note)}</span>` : ''}
           <div id="ext-${v.id}" class="hidden mt"></div></li>`).join('')}</ul></div>`).join('') || '<span class="muted small">No documents uploaded.</span>'}
       ${canUpload && d.status !== 'completed' ? `<form data-form="upload-doc" class="mt" id="upload-doc-form"><h4>Upload document or new version</h4>
@@ -396,8 +398,9 @@ function documentsTab(d) {
 }
 ACT['capture-photo'] = () => $('#doc-camera').click();
 
-function docFileChosen(file) {
-  const prev = $('#doc-preview');
+function docFileChosen(file, previewSel = '#doc-preview') {
+  const prev = $(previewSel);
+  if (!prev) return;
   if (!file) { prev.classList.add('hidden'); prev.innerHTML = ''; return; }
   const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
   const ok = S.meta.upload.allowed_extensions.includes(ext);
@@ -462,11 +465,14 @@ FORMS['upload-doc'] = async (f) => {
   const fill = bar.querySelector('i'), label = bar.querySelector('span');
   fill.style.width = '0%'; label.textContent = 'Uploading...';
   try {
-    await uploadWithProgress(`/api/projects/${D.id}/documents`, fd, (pct) => { fill.style.width = pct + '%'; label.textContent = pct + '%'; });
+    const body = await uploadWithProgress(`/api/projects/${D.id}/documents`, fd, (pct) => { fill.style.width = pct + '%'; label.textContent = pct < 100 ? pct + '%' : 'Reading document (OCR)...'; });
     label.textContent = 'Done';
     D.land = null; D.docs = null; D.why = null;
     await reloadDetail(async () => { await loadTabData(); });
-    toast('Document stored', 'ok');
+    const ext = body && body.latest_extraction;
+    toast(ext && ext.status === 'done' ? `Document stored and digitized: ${ext.fields_found} of ${ext.fields_total} fields read` : 'Document stored', 'ok');
+    // Show what OCR read straight away, instead of leaving it behind a button.
+    if (ext && ext.status !== 'skipped') await ACT['view-extraction']({ dataset: { id: String(ext.document_version_id), force: '1' } });
   } catch (e) { bar.classList.add('hidden'); fail(e); }
 };
 ACT['dl-version'] = (el) => attempt(() => downloadBlob(`/api/documents/versions/${el.dataset.id}/download`, el.dataset.name));
@@ -477,44 +483,68 @@ const EXTRACTION_FIELD_LABELS = {
   land_type: 'Land type', compensation_amount: 'Compensation (Rs.)', ref_no: 'Reference No.', date: 'Date',
 };
 const EXTRACTION_STATUS_LABEL = { done: 'Digitized', pending: 'Processing', skipped: 'Not applicable', failed: 'Could not read' };
+const PARCEL_LAND_TYPES = ['agricultural', 'residential', 'commercial', 'barren'];
+const OCR_ACCEPT = '.pdf,.png,.jpg,.jpeg,.tif,.tiff';
 
-function extractionPanelHtml(ext, versionId) {
+function fmtExtractedValue(k, v) {
+  if (k === 'compensation_amount') return '₹' + Number(v).toLocaleString('en-IN');
+  if (k === 'area_ha') return `${num(v, 4)} ha`;
+  return v;
+}
+
+// Shared by the project drawer's Documents tab and the Digitize page.
+function extractionPanelHtml(ext, versionId, { bare = false } = {}) {
   const statusBadgeClass = { done: 'low', pending: 'medium', skipped: '', failed: 'critical' }[ext.status] || '';
+  const found = ext.fields_found ?? Object.keys(ext.fields || {}).length;
+  const total = ext.fields_total || Object.keys(EXTRACTION_FIELD_LABELS).length;
   const head = `<div class="gap"><span class="badge ${statusBadgeClass}">${esc(EXTRACTION_STATUS_LABEL[ext.status] || ext.status)}</span>
-    ${ext.status === 'done' ? `<span class="muted small">${esc(ext.engine)} &middot; ${ext.ocr_confidence != null ? Math.round(ext.ocr_confidence) + '% OCR confidence' : ''}</span>` : ''}
-    ${ext.applied ? `<span class="badge low">Applied to parcel by ${esc(ext.applied_by)}</span>` : ''}</div>`;
+    ${ext.status === 'done' ? `<span class="small"><b>${found} of ${total}</b> fields found</span>
+      <span class="muted small">${esc(ext.engine)}${ext.ocr_confidence != null ? ' &middot; ' + Math.round(ext.ocr_confidence) + '% OCR confidence' : ''}</span>` : ''}
+    ${ext.applied ? `<span class="badge low">&#10003; Applied to parcel by ${esc(ext.applied_by)}</span>` : ''}</div>`;
+  const wrap = (html) => (bare ? html : `<div class="card">${html}</div>`);
 
   if (ext.status !== 'done') {
-    return `<div class="card">${head}${ext.note ? `<div class="small muted mt">${esc(ext.note)}</div>` : ''}</div>`;
+    return wrap(`${head}${ext.note ? `<div class="small muted mt">${esc(ext.note)}</div>` : ''}`);
   }
 
-  const fieldKeys = Object.keys(ext.fields);
-  const fieldsTable = fieldKeys.length
-    ? `<table class="small mt"><tbody>${fieldKeys.map((k) => `<tr><td class="muted">${esc(EXTRACTION_FIELD_LABELS[k] || title(k))}</td>
-        <td><b>${esc(ext.fields[k].value)}</b></td>
-        <td><span class="badge ${ext.fields[k].confidence === 'high' ? 'low' : 'medium'}">${ext.fields[k].confidence === 'high' ? 'high confidence' : 'needs review'}</span></td></tr>`).join('')}</tbody></table>`
-    : '<div class="small muted mt">No recognizable fields found in this document.</div>';
+  const warnings = (ext.warnings || []).length
+    ? `<div class="banner warn small mt">${ext.warnings.map((w) => `<div>&#9888; ${esc(w)}</div>`).join('')}</div>` : '';
+  const fieldsTable = `<table class="ocr-fields mt"><tbody>${Object.keys(EXTRACTION_FIELD_LABELS).map((k) => {
+    const f = ext.fields[k];
+    if (!f) return `<tr class="missing"><td>${EXTRACTION_FIELD_LABELS[k]}</td><td colspan="2">Not found</td></tr>`;
+    const high = f.confidence === 'high';
+    return `<tr><td>${EXTRACTION_FIELD_LABELS[k]}</td><td><b>${esc(fmtExtractedValue(k, f.value))}</b>
+      <div class="ocr-src" title="Text this was read from">“${esc(f.matched_text)}”</div></td>
+      <td class="right"><span class="badge ${high ? 'low' : 'medium'}">${high ? 'high confidence' : 'needs review'}</span></td></tr>`;
+  }).join('')}</tbody></table>`;
 
-  const canApply = can('district', 'state', 'central') && !ext.applied && fieldKeys.length;
-  const applyForm = canApply ? `<form data-form="apply-extraction" data-version="${versionId}" class="mt">
-      <div class="small muted">Review before applying — correct anything OCR got wrong, then confirm onto the matching parcel by survey number.</div>
-      <div class="field"><label>Survey No. (must match an existing parcel)</label><input name="survey_no" value="${esc(ext.fields.survey_no ? ext.fields.survey_no.value : '')}" required></div>
-      <div class="field"><label>Owner name</label><input name="owner_name" value="${esc(ext.fields.owner_name ? ext.fields.owner_name.value : '')}"></div>
-      <div class="field"><label>Village</label><input name="village" value="${esc(ext.fields.village ? ext.fields.village.value : '')}"></div>
-      <div class="field"><label>Area (ha)</label><input name="area_ha" value="${esc(ext.fields.area_ha ? ext.fields.area_ha.value : '')}"></div>
-      <div class="field"><label>Land type</label><input name="land_type" value="${esc(ext.fields.land_type ? ext.fields.land_type.value : '')}"></div>
-      <button class="btn primary sm" type="submit">Apply to parcel</button>
-    </form>` : '';
+  const fv = (k) => esc(ext.fields[k] ? ext.fields[k].value : '');
+  const canApply = can('district', 'state', 'central') && !ext.applied && found;
+  const applyForm = canApply ? `<form data-form="apply-extraction" data-version="${versionId}" class="ocr-apply mt">
+      <h4>Review and apply to parcel</h4>
+      <div class="small muted mb">Correct anything OCR got wrong, then confirm. The parcel is matched by survey number on this document's project.</div>
+      <div class="row">
+        <div class="field"><label>Survey No. (must match a parcel)</label><input name="survey_no" value="${fv('survey_no')}" required></div>
+        <div class="field"><label>Owner name</label><input name="owner_name" value="${fv('owner_name')}"></div>
+        <div class="field"><label>Village</label><input name="village" value="${fv('village')}"></div>
+        <div class="field"><label>Area (ha)</label><input name="area_ha" type="number" step="0.0001" min="0" value="${fv('area_ha')}"></div>
+        <div class="field"><label>Land type</label><select name="land_type"><option value="">(leave unchanged)</option>
+          ${PARCEL_LAND_TYPES.map((t) => `<option value="${t}" ${ext.fields.land_type && ext.fields.land_type.value === t ? 'selected' : ''}>${title(t)}</option>`).join('')}</select></div>
+      </div>
+      <button class="btn primary" type="submit">&#10003; Apply to parcel</button>
+    </form>`
+    : (!ext.applied && found && !can('district', 'state', 'central')
+      ? '<div class="small muted mt">A district, state or central officer reviews these fields and applies them to the parcel.</div>' : '');
 
-  return `<div class="card">${head}${fieldsTable}${applyForm}
-    <details class="mt"><summary class="small muted">Raw OCR text</summary><pre class="small">${esc(ext.text)}</pre></details></div>`;
+  return wrap(`${head}${warnings}${fieldsTable}${applyForm}
+    <details class="mt"><summary class="small muted">Raw OCR text</summary><pre class="small ocr-raw">${esc(ext.text)}</pre></details>`);
 }
 
 ACT['view-extraction'] = async (el) => {
   const vid = el.dataset.id;
   const box = document.querySelector(`#ext-${vid}`);
   if (!box) return;
-  if (!box.classList.contains('hidden')) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  if (!box.classList.contains('hidden') && !el.dataset.force) { box.classList.add('hidden'); box.innerHTML = ''; return; }
   box.classList.remove('hidden');
   box.innerHTML = '<div class="small muted">Loading digitized text...</div>';
   try {
@@ -531,9 +561,171 @@ FORMS['apply-extraction'] = async (f) => {
   Object.keys(body).forEach((k) => { if (!body[k]) delete body[k]; });
   const out = await attempt(() => api(`/api/documents/versions/${vid}/apply-extraction`, { method: 'POST', json: { fields: body } }), 'Applied to parcel');
   if (out === undefined) return;
+  if (f.closest('#ocr-result')) { await openOcrResult(vid); await refreshOcrRecent(); return; }
   D.land = null; D.docs = null;
   await reloadDetail(async () => { await loadTabData(); });
 };
+
+// ---- Digitize page (main navigation): upload a scan -> fields read -> officer reviews and applies
+const OCR = { projects: [], recent: [], active: null };
+
+async function viewDigitize(main) {
+  const canUpload = can('agency', 'state', 'district', 'field');
+  const [projects, recent] = await Promise.all([
+    canUpload ? api('/api/projects?limit=1000&sort=name') : Promise.resolve({ items: [] }),
+    api('/api/documents/extractions?limit=50'),
+  ]);
+  OCR.projects = projects.items.filter((p) => p.status !== 'completed');
+  OCR.recent = recent.items;
+  OCR.active = null;
+
+  const uploadCard = canUpload ? `<form data-form="ocr-upload" id="ocr-upload-form">
+      <div class="field"><label for="ocr-project">Project</label>
+        <select name="project" id="ocr-project" required>${OCR.projects.map((p) => `<option value="${p.id}">${esc(p.code)} &middot; ${esc(p.name)}</option>`).join('')}</select></div>
+      <div class="row">
+        <div class="field"><label for="ocr-category">Document type</label>
+          <select name="category" id="ocr-category">${DOC_CATEGORIES_EXTRA.map((c) => `<option value="${c}" ${c === 'award_copy' ? 'selected' : ''}>${esc(title(c))}</option>`).join('')}</select></div>
+        <div class="field"><label for="ocr-name">Name (optional)</label><input name="name" id="ocr-name" placeholder="e.g. Award copy, Sy. No. 245/B"></div>
+      </div>
+      <label class="ocr-drop" id="ocr-dropzone" for="ocr-file">
+        <input type="file" name="file" id="ocr-file" accept="${OCR_ACCEPT}" required>
+        <span class="ocr-drop-icon" aria-hidden="true">&#128196;</span>
+        <span><b>Choose a scan</b> or drag it here</span>
+        <span class="small muted">PDF, JPG, PNG or TIFF &middot; a phone photo works &middot; up to ${S.meta.upload.max_mb} MB</span>
+      </label>
+      <div id="ocr-preview" class="doc-preview hidden"></div>
+      <div id="ocr-progress" class="doc-progress hidden"><div class="track"><i></i></div><span class="small muted"></span></div>
+      <div class="gap mt">
+        <button class="btn primary" type="submit">&#128269; Digitize document</button>
+        <button class="btn" type="button" data-act="ocr-sample" title="Loads a synthetic award notice for a real parcel on the selected project">Try a sample scan</button>
+      </div>
+    </form>`
+    : `<p class="small muted">Your role reviews digitized documents. Scans are uploaded by field, district, state and agency users,
+       from here or from a project's Documents tab.</p>`;
+
+  main.innerHTML = `
+    <div class="gap mb"><h2>Document digitization</h2><span class="badge model">OCR</span>
+      <span class="muted small">Turn scanned land records into structured data</span></div>
+    <div class="ocr-steps mb">
+      <div class="ocr-step"><b>1</b><div><strong>Upload a scan</strong><span>Award copy, notification, Record of Rights or survey report</span></div></div>
+      <div class="ocr-step"><b>2</b><div><strong>Fields are read automatically</strong><span>Survey no., village, owner, area, land type, compensation, reference no., date</span></div></div>
+      <div class="ocr-step"><b>3</b><div><strong>An officer reviews and applies</strong><span>Nothing reaches a parcel without sign-off; every step is in the audit log</span></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h4>Upload and digitize</h4>${uploadCard}</div>
+      <div class="card"><h4>Result</h4><div id="ocr-result"><div class="ocr-empty">
+        <span aria-hidden="true">&#128269;</span>${canUpload ? 'Upload a scan, or pick one from the list below, to see what was read.' : 'Pick a document from the list below to review what was read.'}</div></div></div>
+    </div>
+    <div class="card mt"><div class="gap"><h4 style="margin:0">Recently digitized</h4><span class="muted small" id="ocr-recent-count"></span></div>
+      <div class="table-wrap mt" id="ocr-recent"></div></div>`;
+  renderOcrRecent();
+}
+VIEWS.digitize = viewDigitize;
+
+function renderOcrRecent() {
+  const box = $('#ocr-recent');
+  if (!box) return;
+  $('#ocr-recent-count').textContent = OCR.recent.length ? `${OCR.recent.length} most recent in your area` : '';
+  if (!OCR.recent.length) {
+    box.innerHTML = '<div class="small muted">No documents digitized yet. Every PDF or image uploaded to a project is read automatically and will appear here.</div>';
+    return;
+  }
+  box.innerHTML = `<table><thead><tr><th>Uploaded</th><th>Project</th><th>Document</th><th>Status</th><th>Fields found</th><th class="num">OCR conf.</th><th>Survey No.</th><th>Parcel</th></tr></thead><tbody>
+    ${OCR.recent.map((r) => `<tr class="click ${String(r.version_id) === String(OCR.active) ? 'active' : ''}" data-act="ocr-open" data-id="${r.version_id}">
+      <td class="nowrap">${fdate(r.uploaded_at)}<div class="small muted">${esc(r.uploaded_by)}</div></td>
+      <td><b>${esc(r.project_code)}</b></td>
+      <td>${esc(r.document_name)} <span class="muted small">v${r.version}</span><div class="small muted">${esc(title(r.category))}</div></td>
+      <td><span class="badge ${{ done: 'low', failed: 'critical', pending: 'medium' }[r.status] || ''}">${esc(EXTRACTION_STATUS_LABEL[r.status] || r.status)}</span></td>
+      <td class="progress">${r.status === 'done' ? `${bar((100 * r.fields_found) / r.fields_total)}<span class="small muted">${r.fields_found} / ${r.fields_total}</span>` : '<span class="muted small">-</span>'}</td>
+      <td class="num">${r.ocr_confidence != null && r.status === 'done' ? Math.round(r.ocr_confidence) + '%' : '-'}</td>
+      <td>${esc(r.survey_no || '-')}</td>
+      <td>${r.applied ? `<span class="badge low">Applied</span>` : (r.status === 'done' && r.fields_found ? '<span class="badge medium">To review</span>' : '')}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function refreshOcrRecent() {
+  OCR.recent = (await api('/api/documents/extractions?limit=50')).items;
+  renderOcrRecent();
+}
+
+async function openOcrResult(versionId, known) {
+  const box = $('#ocr-result');
+  if (!box) return;
+  OCR.active = versionId;
+  const r = OCR.recent.find((x) => String(x.version_id) === String(versionId));
+  box.innerHTML = '<div class="small muted">Loading...</div>';
+  try {
+    const ext = known || await api(`/api/documents/versions/${versionId}/extraction`);
+    const meta = r ? `<div class="ocr-doc"><b>${esc(r.document_name)}</b> <span class="muted small">v${r.version} &middot; ${esc(r.filename)}</span>
+      <div class="small muted">${esc(r.project_code)} &middot; ${esc(r.project_name)}</div></div>` : '';
+    box.innerHTML = meta + extractionPanelHtml(ext, versionId, { bare: true });
+  } catch (e) { box.innerHTML = `<div class="banner bad small">${esc(e.message)}</div>`; }
+  document.querySelectorAll('#ocr-recent tr.click').forEach((tr) => tr.classList.toggle('active', tr.dataset.id === String(versionId)));
+}
+ACT['ocr-open'] = async (el) => {
+  await openOcrResult(el.dataset.id);
+  if (window.innerWidth < 900) $('#ocr-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+function ocrFileChosen(file) { docFileChosen(file, '#ocr-preview'); }
+
+ACT['ocr-sample'] = async () => {
+  const pid = $('#ocr-project').value;
+  if (!pid) { toast('Pick a project first', 'bad'); return; }
+  const r = await attempt(() => api(`/api/projects/${pid}/sample-scan`, { raw: true }));
+  if (!r) return;
+  const p = OCR.projects.find((x) => String(x.id) === String(pid));
+  const file = new File([await r.blob()], `sample_award_${p ? p.code : pid}.png`, { type: 'image/png' });
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  $('#ocr-file').files = dt.files;
+  $('#ocr-name').value = 'Sample award scan';
+  ocrFileChosen(file);
+  toast('Sample scan loaded. Press "Digitize document".', 'ok');
+};
+
+FORMS['ocr-upload'] = async (f) => {
+  const fd = new FormData(f);
+  const pid = fd.get('project');
+  fd.delete('project');
+  if (!fd.get('name')) fd.delete('name');
+  const prog = $('#ocr-progress');
+  const fill = prog.querySelector('i'), label = prog.querySelector('span');
+  prog.classList.remove('hidden');
+  fill.style.width = '0%'; label.textContent = 'Uploading...';
+  const btn = f.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  try {
+    const body = await uploadWithProgress(`/api/projects/${pid}/documents`, fd, (pct) => {
+      fill.style.width = pct + '%';
+      label.textContent = pct < 100 ? `Uploading ${pct}%` : 'Reading document (OCR)...';
+    });
+    label.textContent = 'Done';
+    const ext = body.latest_extraction;
+    await refreshOcrRecent();
+    await openOcrResult(ext.document_version_id, ext);
+    toast(ext.status === 'done' ? `Digitized: ${ext.fields_found} of ${ext.fields_total} fields found` : `Stored. ${EXTRACTION_STATUS_LABEL[ext.status] || ext.status}`, ext.status === 'done' ? 'ok' : '');
+    f.reset();
+    ocrFileChosen(null);
+    if (window.innerWidth < 900) $('#ocr-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { fail(e); } finally { btn.disabled = false; setTimeout(() => prog.classList.add('hidden'), 1200); }
+};
+
+document.addEventListener('change', (e) => { if (e.target.id === 'ocr-file') ocrFileChosen(e.target.files[0]); });
+document.addEventListener('dragover', (e) => { const z = e.target.closest && e.target.closest('#ocr-dropzone'); if (z) { e.preventDefault(); z.classList.add('drag'); } });
+document.addEventListener('dragleave', (e) => { const z = e.target.closest && e.target.closest('#ocr-dropzone'); if (z && !e.relatedTarget) z.classList.remove('drag'); });
+document.addEventListener('drop', (e) => {
+  const zone = e.target.closest && e.target.closest('#ocr-dropzone');
+  if (!zone) return;
+  e.preventDefault();
+  zone.classList.remove('drag');
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!file) return;
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  $('#ocr-file').files = dt.files;
+  ocrFileChosen(file);
+});
 
 // ---- timeline
 function timelineTab(d) {
