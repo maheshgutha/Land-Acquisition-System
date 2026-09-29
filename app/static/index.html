@@ -9,36 +9,17 @@
 </head>
 <body>
   <section id="login" class="hidden">
+    <a class="skip-link" href="#lu">Skip to sign in</a>
     <div class="gov-topbar">
       <div class="gov-topbar-inner">
-        <span>&#2349;&#2366;&#2352;&#2340; &#2360;&#2352;&#2325;&#2366;&#2352; &middot; Government of India</span>
-        <span class="gov-topbar-links">
-          <a href="#" onclick="return false" tabindex="-1">Screen Reader Access</a>
-          <a href="#" onclick="return false" tabindex="-1">Skip to Main Content</a>
-          <span class="gov-lang">English | &#2361;&#2367;&#2306;&#2342;&#2368;</span>
-        </span>
+        <span class="gov-topbar-id"><span lang="hi">भारत सरकार</span> <span class="sep">|</span> Government of India</span>
+        <span class="gov-lang" aria-label="Language"><b>English</b> <span class="sep">|</span> <span lang="hi">हिंदी</span></span>
       </div>
     </div>
     <div class="tricolor-bar" aria-hidden="true"></div>
-    <svg class="gov-watermark" viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="50" cy="50" r="44"/><circle cx="50" cy="50" r="9"/>
-      <line x1="50.00" y1="41.00" x2="50.00" y2="6.00"/><line x1="52.33" y1="41.31" x2="61.39" y2="7.50"/>
-      <line x1="54.50" y1="42.21" x2="72.00" y2="11.89"/><line x1="56.36" y1="43.64" x2="81.11" y2="18.89"/>
-      <line x1="57.79" y1="45.50" x2="88.11" y2="28.00"/><line x1="58.69" y1="47.67" x2="92.50" y2="38.61"/>
-      <line x1="59.00" y1="50.00" x2="94.00" y2="50.00"/><line x1="58.69" y1="52.33" x2="92.50" y2="61.39"/>
-      <line x1="57.79" y1="54.50" x2="88.11" y2="72.00"/><line x1="56.36" y1="56.36" x2="81.11" y2="81.11"/>
-      <line x1="54.50" y1="57.79" x2="72.00" y2="88.11"/><line x1="52.33" y1="58.69" x2="61.39" y2="92.50"/>
-      <line x1="50.00" y1="59.00" x2="50.00" y2="94.00"/><line x1="47.67" y1="58.69" x2="38.61" y2="92.50"/>
-      <line x1="45.50" y1="57.79" x2="28.00" y2="88.11"/><line x1="43.64" y1="56.36" x2="18.89" y2="81.11"/>
-      <line x1="42.21" y1="54.50" x2="11.89" y2="72.00"/><line x1="41.31" y1="52.33" x2="7.50" y2="61.39"/>
-      <line x1="41.00" y1="50.00" x2="6.00" y2="50.00"/><line x1="41.31" y1="47.67" x2="7.50" y2="38.61"/>
-      <line x1="42.21" y1="45.50" x2="11.89" y2="28.00"/><line x1="43.64" y1="43.64" x2="18.89" y2="18.89"/>
-      <line x1="45.50" y1="42.21" x2="28.00" y2="11.89"/><line x1="47.67" y1="41.31" x2="38.61" y2="7.50"/>
-    </svg>
 
-    <div class="gov-wrap">
-    <form class="login-card" data-form="login" autocomplete="off">
-      <div class="gov-header">
+    <header class="gov-masthead">
+      <div class="gov-masthead-inner">
         <svg class="chakra" viewBox="0 0 100 100" aria-hidden="true">
           <circle cx="50" cy="50" r="44"/><circle cx="50" cy="50" r="9"/>
           <line x1="50.00" y1="41.00" x2="50.00" y2="6.00"/><line x1="52.33" y1="41.31" x2="61.39" y2="7.50"/>
@@ -54,47 +35,123 @@
           <line x1="42.21" y1="45.50" x2="11.89" y2="28.00"/><line x1="43.64" y1="43.64" x2="18.89" y2="18.89"/>
           <line x1="45.50" y1="42.21" x2="28.00" y2="11.89"/><line x1="47.67" y1="41.31" x2="38.61" y2="7.50"/>
         </svg>
-        <div class="gov-header-text">
+        <div class="gov-masthead-text">
+          <div class="gov-hindi" lang="hi">भूमि अधिग्रहण एवं प्रबंधन प्रणाली</div>
+          <div class="gov-title">LandScan <span>National Land Acquisition &amp; Management System</span></div>
           <div class="gov-ministry">Ministry of Rural Development &middot; Department of Land Resources</div>
-          <h1>LandScan</h1>
-          <div class="gov-hindi">&#2349;&#2370;&#2350;&#2367; &#2309;&#2343;&#2367;&#2327;&#2381;&#2352;&#2361;&#2339; &#2319;&#2357;&#2306; &#2346;&#2381;&#2352;&#2348;&#2306;&#2343;&#2344; &#2346;&#2381;&#2352;&#2339;&#2366;&#2354;&#2368;</div>
+        </div>
+        <div class="gov-masthead-tags">
+          <span class="gov-tag green">Digital India</span>
+          <span class="gov-tag">SIH 2026 &middot; PS 26016</span>
         </div>
       </div>
-      <p>Real-time land acquisition and management: one view of every project, parcel, payment and delay risk.</p>
-      <div class="synthetic-disclaimer">Synthetic Demo Data &mdash; Not Valid for Legal, Ownership, Registration, Court, Banking, or Government Decisions.</div>
-      <div class="row">
-        <div class="field"><label for="lu">Username</label><input id="lu" name="username" required autofocus></div>
-        <div class="field"><label for="lp">Password</label><input id="lp" name="password" type="password" required></div>
+    </header>
+
+    <main class="gov-main">
+      <svg class="gov-watermark" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="44"/><circle cx="50" cy="50" r="9"/>
+        <line x1="50.00" y1="41.00" x2="50.00" y2="6.00"/><line x1="52.33" y1="41.31" x2="61.39" y2="7.50"/>
+        <line x1="54.50" y1="42.21" x2="72.00" y2="11.89"/><line x1="56.36" y1="43.64" x2="81.11" y2="18.89"/>
+        <line x1="57.79" y1="45.50" x2="88.11" y2="28.00"/><line x1="58.69" y1="47.67" x2="92.50" y2="38.61"/>
+        <line x1="59.00" y1="50.00" x2="94.00" y2="50.00"/><line x1="58.69" y1="52.33" x2="92.50" y2="61.39"/>
+        <line x1="57.79" y1="54.50" x2="88.11" y2="72.00"/><line x1="56.36" y1="56.36" x2="81.11" y2="81.11"/>
+        <line x1="54.50" y1="57.79" x2="72.00" y2="88.11"/><line x1="52.33" y1="58.69" x2="61.39" y2="92.50"/>
+        <line x1="50.00" y1="59.00" x2="50.00" y2="94.00"/><line x1="47.67" y1="58.69" x2="38.61" y2="92.50"/>
+        <line x1="45.50" y1="57.79" x2="28.00" y2="88.11"/><line x1="43.64" y1="56.36" x2="18.89" y2="81.11"/>
+        <line x1="42.21" y1="54.50" x2="11.89" y2="72.00"/><line x1="41.31" y1="52.33" x2="7.50" y2="61.39"/>
+        <line x1="41.00" y1="50.00" x2="6.00" y2="50.00"/><line x1="41.31" y1="47.67" x2="7.50" y2="38.61"/>
+        <line x1="42.21" y1="45.50" x2="11.89" y2="28.00"/><line x1="43.64" y1="43.64" x2="18.89" y2="18.89"/>
+        <line x1="45.50" y1="42.21" x2="28.00" y2="11.89"/><line x1="47.67" y1="41.31" x2="38.61" y2="7.50"/>
+      </svg>
+
+      <div class="gov-grid">
+        <section class="gov-hero" aria-labelledby="hero-title">
+          <div class="gov-eyebrow">Decision support for acquiring authorities</div>
+          <h2 id="hero-title">One view of every project, parcel, payment and delay risk.</h2>
+          <p class="gov-lede">End-to-end digital monitoring of land acquisition for highways, railways, industrial
+            corridors and irrigation, from proposal to possession and R&amp;R.</p>
+
+          <ol class="gov-stages" aria-label="Acquisition stages">
+            <li><i></i>Proposal</li><li><i></i>Notification</li><li><i></i>Award</li>
+            <li><i></i>Compensation</li><li><i></i>Possession</li>
+          </ol>
+
+          <ul class="gov-features">
+            <li><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span>
+              <div><b>GIS geo-tagging</b><span>Every parcel on an interactive national map</span></div></li>
+            <li><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg></span>
+              <div><b>Role-gated approvals</b><span>Central, State, District and agency workflows</span></div></li>
+            <li><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></span>
+              <div><b>Digitised records</b><span>Versioned, tamper-evident documents with OCR</span></div></li>
+            <li><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg></span>
+              <div><b>Delay-risk insights</b><span>Model-driven, explained per project</span></div></li>
+          </ul>
+        </section>
+
+        <form class="login-card" data-form="login" autocomplete="off" aria-labelledby="login-title">
+          <div class="login-card-head">
+            <h1 id="login-title">Sign in</h1>
+            <span class="login-sub">Authorised officials only &middot; <span lang="hi">केवल अधिकृत अधिकारी</span></span>
+          </div>
+
+          <div class="synthetic-disclaimer" role="note">
+            <b>Synthetic demo data.</b> Not valid for legal, ownership, registration, court, banking or government decisions.
+          </div>
+
+          <div class="field">
+            <label for="lu">Username</label>
+            <div class="input-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+              <input id="lu" name="username" required autofocus autocomplete="username" placeholder="Enter your username">
+            </div>
+          </div>
+          <div class="field">
+            <label for="lp">Password</label>
+            <div class="input-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <input id="lp" name="password" type="password" required autocomplete="current-password" placeholder="Enter your password">
+              <button type="button" class="pw-toggle" data-act="toggle-password" aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+          </div>
+
+          <div id="login-error" class="banner bad hidden" role="alert"></div>
+          <button class="btn primary login-submit" type="submit">Sign in securely</button>
+
+          <div id="demo-users" class="hidden">
+            <div class="demo-head"><span>Demo accounts</span><span>Password <b>demo1234</b></span></div>
+            <div class="demo-hint">Pick a role to fill in the details, then sign in.</div>
+            <div id="demo-chips" class="chips" aria-label="Sign in as a role"></div>
+            <label class="sr-only" for="demo-select">Choose a demo account</label>
+            <select id="demo-select" class="demo-select"></select>
+          </div>
+
+          <button type="button" class="about-toggle" data-act="toggle-about" aria-expanded="false" aria-controls="about-panel">About this project &darr;</button>
+          <div class="about-panel hidden" id="about-panel">
+            <h4>Problem statement</h4>
+            <p><b>SIH 2026, PS 26016</b> &mdash; Real-Time National Land Acquisition &amp; Management System for
+              End-to-End Digital Monitoring and Decision Support (Ministry of Rural Development, DoLR). Land acquisition
+              for highways, railways, industrial corridors, irrigation and other infrastructure today runs through
+              fragmented, state-specific, largely paper-based processes across Central Ministries, State Governments,
+              District Authorities and Project Implementing Agencies, with limited transparency into where a project
+              actually stands.</p>
+            <h4>What this build does</h4>
+            <p>An end-to-end digital workflow from proposal to possession and R&amp;R, with role-gated approvals at every
+              stage; GIS geo-tagging of parcels with an interactive national map; a live national dashboard covering
+              area, compensation, families, R&amp;R and schedule adherence; mobile-responsive field data capture (GPS
+              and camera); a versioned, tamper-evident document repository; customisable MIS reports; and a trained
+              delay-risk model with per-project explanations. See the full project PDF for a section-by-section
+              walkthrough and an honest breakdown of what is real versus mocked.</p>
+          </div>
+        </form>
       </div>
-      <div id="login-error" class="banner bad hidden"></div>
-      <button class="btn primary" type="submit">Sign in</button>
-      <div id="demo-users" class="hidden">
-        <div class="demo-note">Demo build. All projects, owners and coordinates are synthetic. Pick an account (password <b>demo1234</b>):</div>
-        <div id="demo-chips" class="chips"></div>
+    </main>
+
+    <footer class="gov-footer">
+      <div class="gov-footer-inner">
+        <span>An initiative under <b>Smart India Hackathon 2026</b> &middot; Problem Statement 26016</span>
+        <span>Demonstration build &middot; all projects, owners and coordinates are synthetic</span>
       </div>
-      <button type="button" class="about-toggle" data-act="toggle-about">About this project &darr;</button>
-      <div class="about-panel hidden" id="about-panel">
-        <h4>Problem statement</h4>
-        <p><b>SIH 2026, PS 26016</b> &mdash; Real-Time National Land Acquisition &amp; Management System for
-          End-to-End Digital Monitoring and Decision Support (Ministry of Rural Development, DoLR). Land acquisition
-          for highways, railways, industrial corridors, irrigation and other infrastructure today runs through
-          fragmented, state-specific, largely paper-based processes across Central Ministries, State Governments,
-          District Authorities and Project Implementing Agencies, with limited transparency into where a project
-          actually stands.</p>
-        <h4>What this build does</h4>
-        <p>An end-to-end digital workflow from proposal to possession and R&amp;R, with role-gated approvals at every
-          stage; GIS geo-tagging of parcels with an interactive national map; a live national dashboard covering
-          area, compensation, families, R&amp;R and schedule adherence; mobile-responsive field data capture (GPS
-          and camera); a versioned, tamper-evident document repository; customisable MIS reports; and a trained
-          delay-risk model with per-project explanations. See the full project PDF for a section-by-section
-          walkthrough and an honest breakdown of what is real versus mocked.</p>
-      </div>
-      <div class="gov-footer">
-        <span>An initiative under <b>Smart India Hackathon 2026</b></span>
-        <span class="gov-footer-tag">Digital India</span>
-      </div>
-    </form>
-    </div>
+    </footer>
   </section>
 
   <div id="app" class="hidden">

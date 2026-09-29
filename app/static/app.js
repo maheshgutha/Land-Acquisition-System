@@ -113,15 +113,32 @@ async function showLogin() {
     const users = await (await fetch('/api/auth/demo-users')).json();
     if (Array.isArray(users)) {
       $('#demo-users').classList.remove('hidden');
-      $('#demo-chips').innerHTML = users.map((u) => `<button type="button" class="chip" data-act="fill-login" data-u="${esc(u.username)}" title="${esc(u.full_name)}">${esc(u.username)} <span class="muted">(${esc(u.role)})</span></button>`).join('');
+      // One quick-pick chip per role, plus every account in a dropdown grouped by role.
+      const byRole = new Map();
+      users.forEach((u) => { if (!byRole.has(u.role)) byRole.set(u.role, []); byRole.get(u.role).push(u); });
+      const label = (r) => r.charAt(0).toUpperCase() + r.slice(1);
+      $('#demo-chips').innerHTML = [...byRole.values()].map(([u]) => `<button type="button" class="chip" data-act="fill-login" data-u="${esc(u.username)}" title="Sign in as ${esc(u.full_name)}">${esc(label(u.role))}</button>`).join('');
+      const sel = $('#demo-select');
+      sel.innerHTML = '<option value="">All demo accounts&hellip;</option>' + [...byRole].map(([r, list]) =>
+        `<optgroup label="${esc(label(r))}">${list.map((u) => `<option value="${esc(u.username)}">${esc(u.full_name)} (${esc(u.username)})</option>`).join('')}</optgroup>`).join('');
+      sel.onchange = () => { if (sel.value) ACT['fill-login']({ dataset: { u: sel.value } }); };
     }
   } catch (_) { /* demo list disabled */ }
 }
-ACT['fill-login'] = (el) => { $('#lu').value = el.dataset.u; $('#lp').value = 'demo1234'; };
+ACT['fill-login'] = (el) => { $('#lu').value = el.dataset.u; $('#lp').value = 'demo1234'; $('.login-submit').focus(); };
+ACT['toggle-password'] = (el) => {
+  const input = $('#lp');
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  el.textContent = show ? 'Hide' : 'Show';
+  el.setAttribute('aria-pressed', String(show));
+  el.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+};
 ACT['toggle-about'] = (el) => {
   const panel = $('#about-panel');
   const open = panel.classList.toggle('hidden') === false;
   el.innerHTML = open ? 'About this project &uarr;' : 'About this project &darr;';
+  el.setAttribute('aria-expanded', String(open));
 };
 FORMS.login = async (f) => {
   const err = $('#login-error'); err.classList.add('hidden');
